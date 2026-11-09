@@ -221,7 +221,7 @@ body.tour .ohint,body.ambient .ohint{display:none!important}
 <div class="panel" id="pTest"><h3>⚙️ 설정</h3>
   <div class="tests"><button class="btn main" id="tGuide" style="grid-column:span 2">📖 이용 가이드</button>
     <button class="btn" id="tAmb">🌙 틀어 두기</button><button class="btn" id="tTour">🎞 구경 모드</button>
-    <button class="btn" id="tGfx" style="grid-column:span 2">그래픽: 고급</button>
+    <button class="btn" id="tGfx" style="grid-column:span 2">그래픽: 가볍게</button>
     <button class="btn" id="tMove">📦 기기 옮기기</button><button class="btn" id="tBlock">🙈 숨긴 사람</button>
   </div>
   <details class="dev"><summary>🧪 테스트용 버튼 (확인하기 쉽게 만든 기능이에요)</summary>
@@ -1812,7 +1812,7 @@ const GUIDE=[
 {id:'settings',t:'설정 · 기기 옮기기',h:`<figure><img loading="lazy" src="guide/g17.jpg" alt="기기 옮기기"><figcaption>📦 기기 옮기기</figcaption></figure>
 <ol><li>쓰던 기기 · <b>코드 만들기</b> → <b>📋 복사</b></li><li>새 기기 · 코드 붙여 넣기 → <b>불러오기</b></li></ol>
 <ul><li>하트·별명·도감·선물·비밀·내 모습이 옮겨져요 (앨범 사진은 제외)</li>
-<li><b>그래픽</b> · 느리면 '가볍게'로 바꿔요</li></ul>`},
+<li><b>그래픽</b> · 처음엔 '가볍게'예요. 화면을 더 곱게 보려면 '고급'으로 바꿔요</li></ul>`},
 {id:'village',t:'마을 동산',h:`<figure><img loading="lazy" src="guide/g20.jpg" alt="마을 동산 화면"><figcaption>다른 돌보미와 단짝이 함께 보여요</figcaption></figure>
 <ul><li>단짝 한 마리와 함께 가요. 한 방에 8명까지 · 기니피그도 놀이터에 있어요</li>
 <li><b>이름표</b>는 자동으로 정해져요 (🔄 다시 뽑기)</li>
@@ -2040,7 +2040,7 @@ const GradeShader={uniforms:{tDiffuse:{value:null},sat:{value:.86},con:{value:1.
   vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
   fragmentShader:'uniform sampler2D tDiffuse;uniform float sat,con,warm,vig;varying vec2 vUv;void main(){vec4 c=texture2D(tDiffuse,vUv);vec3 col=c.rgb;float l=dot(col,vec3(.299,.587,.114));col=mix(vec3(l),col,sat);col=(col-.5)*con+.5;col+=vec3(.028,.012,-.018)*warm;float d=distance(vUv,vec2(.5));col*=1.-vig*smoothstep(.42,.86,d);gl_FragColor=vec4(col,c.a);}'};
 let composer=null,bloom=null,tiltH=null,tiltV=null,grade=null;
-let hq=save.hq!==undefined?save.hq:!(matchMedia('(pointer:coarse)').matches&&Math.min(innerWidth,innerHeight)<600);
+let hq=save.gfxSet?!!save.hq:false; // 기본은 '가볍게' (⚙️에서 고급으로 바꿀 수 있어요)
 function setupPost(){if(composer||!THREE.EffectComposer||!THREE.UnrealBloomPass)return;
   try{const gl2=renderer.capabilities.isWebGL2;let rt;
     if(gl2&&THREE.WebGLMultisampleRenderTarget){const sz=renderer.getDrawingBufferSize(new THREE.Vector2());rt=new THREE.WebGLMultisampleRenderTarget(sz.x,sz.y,{format:THREE.RGBAFormat});rt.samples=4;}
@@ -2049,7 +2049,7 @@ function setupPost(){if(composer||!THREE.EffectComposer||!THREE.UnrealBloomPass)
     tiltH=new THREE.ShaderPass(THREE.HorizontalTiltShiftShader);tiltV=new THREE.ShaderPass(THREE.VerticalTiltShiftShader);composer.addPass(tiltH);composer.addPass(tiltV);
     grade=new THREE.ShaderPass(GradeShader);composer.addPass(grade);composer.setSize(innerWidth,innerHeight);}catch(e){composer=null;hq=false;}}
 function setGfx(on){hq=on;save.hq=on;persist();if(on)setupPost();$('#vig').classList.toggle('off',!!(hq&&composer));canvas.classList.toggle('lite',!(hq&&composer));$('#tGfx').textContent='그래픽: '+(hq&&composer?'고급':'가볍게');}
-$('#tGfx').addEventListener('click',()=>setGfx(!hq));
+$('#tGfx').addEventListener('click',()=>{save.gfxSet=1;setGfx(!hq);});
 function updatePost(dt){if(!composer)return;const f=cam.follow?1:0;postBlur=lerp(postBlur,f?.7:1.7,1-Math.exp(-dt*2));
   tiltH.uniforms.h.value=postBlur/innerWidth;tiltV.uniforms.v.value=postBlur/innerHeight;tiltH.uniforms.r.value=tiltV.uniforms.r.value=.5;
   bloom.strength=lerp(.05,.42,nightF);bloom.threshold=lerp(.92,.68,nightF);bloom.radius=lerp(.3,.45,nightF);grade.uniforms.warm.value=lerp(.35,.2,nightF);grade.uniforms.sat.value=lerp(.8,1.02,nightF);grade.uniforms.con.value=lerp(1.02,1.05,nightF);}
