@@ -46,7 +46,7 @@ textarea.code{width:100%;min-height:80px;border:2px solid var(--line);border-rad
 .bub.on{opacity:1;transform:none}
 .bub b{display:block;font-family:Jua,sans-serif;font-weight:400;font-size:12px;color:var(--gam);margin-bottom:1px}
 .bub:after{content:"";position:absolute;left:50%;bottom:-8px;margin-left:-6px;border:6px solid transparent;border-top-color:var(--cream)}
-.emo{font-size:18px;opacity:0;transition:opacity .3s;filter:drop-shadow(0 1px 2px rgba(0,0,0,.2))}
+.emo{font-size:30px;line-height:1.1;opacity:0;transition:opacity .3s;filter:drop-shadow(0 1px 2px rgba(0,0,0,.2))}
 .emo.on{opacity:1}
 .nm{font-size:11px;background:rgba(74,59,44,.72);color:#fffaf0;border-radius:8px;padding:1px 7px;display:none;white-space:nowrap}.nm.on{display:block}
 body.tour .hud,body.tour .sheet,body.tour .panel,body.tour #vbar{opacity:0;pointer-events:none}body.tour .hud{transition:opacity .8s}
@@ -2337,7 +2337,7 @@ const AVAS=[];
 function makeAv(lk,x,z,ex){const p=buildAvatar(lk);scene.add(p.root);const tag=document.createElement('div');tag.className='tag';tag.innerHTML='<div class="emo"></div><div class="bub"></div><div class="nm"></div>';tagsEl.appendChild(tag);
   const v=Object.assign({av:true,lk:lk.slice(),p,pos:new THREE.Vector3(x,0,z),y:groundY(x,z),dir:Math.PI,anim:'idle',state:'idle',pose:'idle',path:[],goal:null,tag,bubT:0,emo:'',emoT:0,an:{rigY:0,rx:0,l:[0,0],a:[0,0],az:[0,0]},animT:0},ex||{});
   v.p.root.position.set(x,v.y,z);AVAS.push(v);return v;}
-function removeAv(v){scene.remove(v.p.root);v.tag.remove();const i=AVAS.indexOf(v);if(i>=0)AVAS.splice(i,1);if(cam.follow===v)cam.follow=null;}
+function removeAv(v){if(v.rfish){scene.remove(v.rfish);v.rfish=null;}if(SWING.rider===v)SWING.rider=null;scene.remove(v.p.root);v.tag.remove();const i=AVAS.indexOf(v);if(i>=0)AVAS.splice(i,1);if(cam.follow===v)cam.follow=null;}
 function relook(v,lk){const r=v.p.root;scene.remove(r);v.p=buildAvatar(lk);v.lk=lk.slice();scene.add(v.p.root);}
 function sayAv(v,txt,dur){if(!v||!txt)return;const b=v.tag.querySelector('.bub');b.innerHTML=`<b>${v.name}</b>${txt}`;b.classList.add('on');v.bubT=dur||3.8;if(v.mine&&net)net.send('ph',{p:me.p,txt});}
 let myAv=null;
@@ -2485,8 +2485,21 @@ function petsUp(v){const P=v.platPOI;if(!P||v.anim!=='sit')return;const L=animal
   L.forEach((a,i)=>{const sd=i%2?-1:1,x=clamp(v.pos.x+sd*(.75+i*.3),P.x-P.ax,P.x+P.ax),z=clamp(v.pos.z+rand(-.2,.2),P.z-P.az,P.z+P.az);a.call=null;setPlan(a,{kind:'poi',poi:P,x,z,y:P.y,roof:P.roof,dur:rand(30,45),withMe:1});say(a,pick(['나도 올라갈래!','영차! 같이 앉자','폴짝!']),2.2);});}
 function avArrive(v){if(v.npc){npcArrive(v);return;}const g=v.goal||{};if(g.kind==='obj'){objArrive(v,g);return;}if(g.kind==='pfish'){fishArrive(v,g);return;}if(g.kind==='sit'){v.anim='sit';v.platPOI=g.poi||null;if(g.face!=null)v.dirT=g.face;if(g.say){sayAv(v,g.say,3);g.say=null;}if(g.poi&&v.mine)setTimeout(()=>petsUp(v),600);}else if(g.kind==='pet'&&g.fence){v.anim='crouch';v.animT=2.4;v.dirT=Math.PI;const w=g.who;if(w&&animals.includes(w)){if(w.pose==='sleep'&&w.state==='act')petAnimal(w);else{petAnimal(w);w.call=[v.pos.x,v.pos.z];w.state='idle';w.timer=.4;}}v.goal=null;}
   else if(g.kind==='pet'){v.anim='crouch';v.animT=1.6;if(g.who&&animals.includes(g.who)){g.who.dirTarget=Math.atan2(v.pos.x-g.who.pos.x,v.pos.z-g.who.pos.z);petAnimal(g.who);}v.goal=null;}else{v.anim='idle';v.goal=null;}}
+function remoteAct(v,n,dt,t){const fl=n.fl||'';if(v.rod&&v.rod.parent!==v.p.root)v.rod=null;
+  // 낚시
+  if(fl[0]==='f'){if(!v.rod)makeRod(v);const bob=v.rod.userData.bob,ph=fl[1];
+    if(ph==='b'){bob.position.y=-.58+Math.sin(t*22)*.04;if(v.rph!=='b')emo(v,'❗',2.4);}else bob.position.y=-.51+Math.sin(t*2)*.012;
+    v.rod.rotation.x=lerp(v.rod.rotation.x,ph==='r'?-.9:0,1-Math.exp(-dt*10));
+    if(ph==='r'&&n.fn){if(!v.rfish||v.rfish.userData.nm!==n.fn){if(v.rfish)scene.remove(v.rfish);v.rfish=fishMesh(n.fn);v.rfish.userData.nm=n.fn;scene.add(v.rfish);}
+      const m=v.rfish;m.position.set(v.pos.x+Math.sin(v.dir)*.75,v.y+1.6,v.pos.z+Math.cos(v.dir)*.75);m.rotation.set(0,v.dir+Math.PI/2,Math.sin(t*14)*.35);if(m.userData.tail)m.userData.tail.rotation.y=Math.sin(t*20)*.6;}
+    else if(v.rfish){scene.remove(v.rfish);v.rfish=null;}
+    v.rph=ph;}
+  else{if(v.rod){v.p.root.remove(v.rod);v.rod=null;}if(v.rfish){scene.remove(v.rfish);v.rfish=null;}v.rph='';}
+  // 그네
+  if(fl==='s'){if(!v.swing&&(!SWING.rider||SWING.rider===v)){v.swing=true;v.swingT=0;SWING.rider=v;}}
+  else if(v.swing){v.swing=null;if(SWING.rider===v)SWING.rider=null;}}
 function updateAv(v,dt,t){if(v.fishing)fishTick(v,dt,t);
-  if(v.remote){const n=v.net;if(n){const k=1-Math.exp(-dt*6);v.pos.x+=(n.x-v.pos.x)*k;v.pos.z+=(n.z-v.pos.z)*k;v.y=lerp(v.y,n.y,k);let df=n.d-v.dir;df=Math.atan2(Math.sin(df),Math.cos(df));v.dir+=df*k;v.anim=n.an;}}
+  if(v.remote){const n=v.net;if(n){const k=1-Math.exp(-dt*6);v.pos.x+=(n.x-v.pos.x)*k;v.pos.z+=(n.z-v.pos.z)*k;v.y=lerp(v.y,n.y,k);let df=n.d-v.dir;df=Math.atan2(Math.sin(df),Math.cos(df));v.dir+=df*k;v.anim=n.an;remoteAct(v,n,dt,t);}}
   else{const gy=surfY(v.pos.x,v.pos.z),g=v.goal;
     if(g&&g.kind==='pet'&&!g.fence&&g.who&&animals.includes(g.who)){const d=Math.hypot(g.who.pos.x-v.pos.x,g.who.pos.z-v.pos.z);if(d<1.3){v.path=[];avArrive(v);}else v.path[v.path.length-1]=[g.who.pos.x,g.who.pos.z];}
     if(v.path.length){const tg=v.path[0],dx=tg[0]-v.pos.x,dz=tg[1]-v.pos.z,dist=Math.hypot(dx,dz);
@@ -2765,7 +2778,7 @@ function onNet(t,d){if(!d)return;if(d.p&&isBlocked(d.p))return;
       const v=makeAv(d.lk||randLook(),d.av?d.av[0]:d.x,d.av?d.av[1]:d.z,{remote:true,pid:d.p,name:d.n});v.tagName=d.n;showName(v);
       P={pet:a,av:v,n:d.n};PEERS.set(d.p,P);toast(`🐾 ${d.n}님이 ${d.nk||def.name}${bat(d.nk||def.name)?'과':'와'} 놀러 왔어요`);}
     P.last=performance.now();P.pet.net={x:d.x,z:d.z,y:d.y+(d.ar||0),d:d.d,po:d.po,s:d.s};
-    if(d.av)P.av.net={x:d.av[0],z:d.av[1],y:d.av[2],d:d.av[3],an:d.av[4]};if(d.lk&&d.lk.join()!==P.av.lk.join())relook(P.av,d.lk);if(d.n!==P.n){P.n=d.n;P.av.name=d.n;P.av.tagName=d.n;showName(P.av);}}
+    if(d.av)P.av.net={x:d.av[0],z:d.av[1],y:d.av[2],d:d.av[3],an:d.av[4],fl:d.av[5]||'',fn:d.av[6]||''};if(d.lk&&d.lk.join()!==P.av.lk.join())relook(P.av,d.lk);if(d.n!==P.n){P.n=d.n;P.av.name=d.n;P.av.tagName=d.n;showName(P.av);}}
   else if(t==='snap'){if(isHost)return;d.a.forEach(r=>{const a=byId[r[0]];if(!a)return;a.netDriven=true;a.net={x:r[1],z:r[2],y:r[3],d:r[4],po:r[5],s:r[5]==='walk'?0:1};if(r[6]&&a.emo!==r[6])emo(a,r[6],3);else if(!r[6]&&a.emo&&a.emoT>=90)unemo(a);});if(d.it)syncItems(d.it);}
   else if(t==='say'){if(isHost)return;const a=byId[d.id];if(a){a._net=true;say(a,d.txt,d.dur);a._net=false;}}
   else if(t==='ph'){const P=PEERS.get(d.p);if(!P)return;if(d.st){emo(P.av,d.st,3);if(d.st==='👋')P.av.netWave=1;}else{const b=P.av.tag.querySelector('.bub');b.innerHTML=`<b>${P.n}</b>${d.txt}`;b.classList.add('on');P.av.bubT=3.8;}}
@@ -2795,9 +2808,13 @@ const FIRE=(()=>{const N=90,g=new THREE.BufferGeometry(),ps=new Float32Array(N*3
 function fireTick(dt,t){const on=fireflyNow();if(on!==fireOn){fireOn=on;if(on){if(MODE==='village'){toast('✨ 반딧불이 모임 시간이에요! 정자나무 아래로 모여요');diary('마을 동산에서 반딧불이 모임에 함께했어요','fire');}else if(fireToast!==new Date().getDate()){fireToast=new Date().getDate();toast('✨ 지금 마을 동산에서 반딧불이 모임 중이에요 (밤 9시~9시 30분)');}}}
   FIRE.k=clamp(FIRE.k+(fireOn&&MODE==='village'?dt*.5:-dt*.5),0,1);FIRE.m.opacity=FIRE.k*(.65+Math.sin(t*3)*.25);FIRE.pts.visible=FIRE.k>.01;if(!FIRE.pts.visible)return;
   const cx=-7.5,cz=19.5,gy=groundY(cx,cz);FIRE.F.forEach((f,i)=>{const a=f.a+t*f.sp*.3;FIRE.ps[i*3]=cx+Math.cos(a)*f.r+Math.sin(t*f.sp+f.ph)*.3;FIRE.ps[i*3+1]=gy+f.h+Math.sin(t*f.sp*2+f.ph)*.35;FIRE.ps[i*3+2]=cz+Math.sin(a)*f.r*.8;});FIRE.g.attributes.position.needsUpdate=true;}
+// 내 돌보미가 지금 하는 일(낚시·그네)을 다른 사람에게 알려요
+let lastFl='';
+function avFlags(v){if(!v)return['',''];if(v.swing)return['s',''];const F=v.fishing;if(F){const ph=F.ph==='bite'?'b':F.ph==='reel'?(F.fish&&v.anim==='hold'?'r':'w'):'w';return['f'+ph,ph==='r'&&F.fish.nm?F.fish.nm:''];}return['',''];}
 function netTick(_dt){const nowT=performance.now(),dt=netLast?Math.min(1,(nowT-netLast)/1000):_dt;netLast=nowT;fireTick(dt,nowT/1000);
   if(MODE==='village'){sweepT-=dt;if(sweepT<=0){sweepT=2;PEERS.forEach((P,pid)=>{if(P.last&&nowT-P.last>15000)dropPeer(pid);});}}itemCD=Math.max(0,itemCD-dt);phCD=Math.max(0,phCD-dt);if(MODE!=='village'||!net)return;stT-=dt;snapT-=dt;
-  if(myPet&&myAv&&stT<=0){const mv=myPet.state==='walk'||(myPet.arc||0)>.02||myAv.anim==='walk'||(myAv.arc||0)>.02;stT=mv?.25:2;net.send('st',{p:me.p,n:me.n,lk:save.look,av:[+myAv.pos.x.toFixed(2),+myAv.pos.z.toFixed(2),+(myAv.y+(myAv.arc||0)).toFixed(2),+myAv.dir.toFixed(2),myAv.anim],pet:myPet.defId,nk:save.nick[myPet.defId]||'',x:+myPet.pos.x.toFixed(2),z:+myPet.pos.z.toFixed(2),y:+myPet.y.toFixed(2),ar:+(myPet.arc||0).toFixed(2),d:+myPet.dir.toFixed(2),po:myPet.state==='walk'?'walk':myPet.pose,s:myPet.state==='walk'?0:1});}
+  const fl=avFlags(myAv);if(myAv&&fl[0]!==lastFl){lastFl=fl[0];stT=0;}
+  if(myPet&&myAv&&stT<=0){const mv=myPet.state==='walk'||(myPet.arc||0)>.02||myAv.anim==='walk'||(myAv.arc||0)>.02;stT=mv?.25:(fl[0]?1:2);net.send('st',{p:me.p,n:me.n,lk:save.look,av:[+myAv.pos.x.toFixed(2),+myAv.pos.z.toFixed(2),+(myAv.y+(myAv.arc||0)).toFixed(2),+myAv.dir.toFixed(2),myAv.anim,fl[0],fl[1]],pet:myPet.defId,nk:save.nick[myPet.defId]||'',x:+myPet.pos.x.toFixed(2),z:+myPet.pos.z.toFixed(2),y:+myPet.y.toFixed(2),ar:+(myPet.arc||0).toFixed(2),d:+myPet.dir.toFixed(2),po:myPet.state==='walk'?'walk':myPet.pose,s:myPet.state==='walk'?0:1});}
   if(isHost&&snapT<=0){snapT=.34;const msg={a:animals.filter(a=>a.local).map(a=>[a.id,+a.pos.x.toFixed(2),+a.pos.z.toFixed(2),+(a.y+(a.arc||0)).toFixed(2),+a.dir.toFixed(2),a.state==='walk'?'walk':a.pose,a.emo||''])};
     if(--itT<=0){itT=9;msg.it=placed.map(i=>[i.iid,i.type,+i.x.toFixed(2),+i.z.toFixed(2),i.owner]);}net.send('snap',msg);}
   const now=performance.now();PEERS.forEach((P,pid)=>{if(now-(P.last||now)>12000)dropPeer(pid);});
