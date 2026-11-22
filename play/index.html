@@ -4202,7 +4202,12 @@ const petDefOf=id=>FAMILY.find(d=>d.id===id)||GUESTS.flatMap(g=>g.members).find(
 function showName(a){const el=a.tag.querySelector('.nm');el.textContent=a.tagName;el.classList.add('on');}
 function setHost(h){if(isHost===h)return;isHost=h;animals.filter(a=>a.local).forEach(a=>{a.netDriven=!h;if(h){a.state='idle';a.timer=rand(.3,1.5);a.plan=null;}});
   $('#vHost').textContent=(h?'🏠 시간 담당 · ':'')+(ONLINE?'장터 '+roomNo+'번':'테스트 모드');}
-function onPeers(list){list=(Array.isArray(list)?netClean(list):[]).filter(q=>q&&netPid(q.p));list.forEach(q=>{q.n=netName(q.n);});peersN=Math.max(1,list.length);$('#vPeers').textContent=`🐾 함께 있는 돌보미 ${peersN}명`;
+// 인원 표시: 늘 때는 바로, 줄 때는 잠깐 기다렸다가 한 명씩 (숫자가 갑자기 뚝 떨어지지 않게)
+let vShown=0,vShownT=null;
+function vPeersShow(){const draw=()=>{$('#vPeers').textContent=`🐾 함께 있는 돌보미 ${vShown}명`;};
+  if(peersN>=vShown){vShown=peersN;draw();return;}
+  if(vShownT)return;const step=()=>{vShownT=null;if(peersN<vShown){vShown--;draw();if(peersN<vShown)vShownT=setTimeout(step,5000);}};vShownT=setTimeout(step,8000);}
+function onPeers(list){list=(Array.isArray(list)?netClean(list):[]).filter(q=>q&&netPid(q.p));list.forEach(q=>{q.n=netName(q.n);});peersN=Math.max(1,list.length);vPeersShow();
   const sorted=list.slice().sort((x,y)=>(x.j-y.j)||(x.p<y.p?-1:1));setHost(!sorted.length||sorted[0].p===me.p);
   const ids=new Set(list.map(q=>q.p));PEERS.forEach((P,pid)=>{if(!ids.has(pid)){dropPeer(pid);}});}
 const isBlocked=pid=>(save.blocked||[]).some(b=>b.p===pid);
