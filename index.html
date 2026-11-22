@@ -366,9 +366,9 @@ Array.prototype.forEach.call(document.querySelectorAll('a[href*="?go="]'),functi
       var hf=document.createElement('form');hf.method='POST';hf.action=ENDPOINT;hf.enctype='multipart/form-data';hf.target='fsSink';hf.acceptCharset='UTF-8';hf.style.display='none';
       fields.forEach(function(kv){if(!kv[1])return;var i=document.createElement('input');i.type='hidden';i.name=kv[0];i.value=kv[1];hf.appendChild(i)});
       var hp=document.createElement('input');hp.type='text';hp.name='_honey';hf.appendChild(hp);
-      var fi=document.createElement('input');fi.type='file';fi.name='attachment';fi.multiple=true;
-      var dt=new DataTransfer();blobs.forEach(function(b,k){dt.items.add(new File([b],(nm.replace(/[^\w가-힣]/g,'')||'pet')+'_'+(k+1)+'.jpg',{type:'image/jpeg'}))});
-      fi.files=dt.files;hf.appendChild(fi);
+      /* 사진 한 장마다 파일 칸을 따로 만들어요 (FormSubmit 문서의 방식). 파일 이름은 영문·숫자만 써요 */
+      blobs.forEach(function(b,k){var fi=document.createElement('input');fi.type='file';fi.name=k?'attachment'+(k+1):'attachment';
+        var dt=new DataTransfer();dt.items.add(new File([b],'photo_'+(k+1)+'.jpg',{type:'image/jpeg'}));fi.files=dt.files;hf.appendChild(fi)});
       var sink=document.getElementById('fsSink');
       if(!sink){sink=document.createElement('iframe');sink.name=sink.id='fsSink';sink.style.display='none';document.body.appendChild(sink)}
       var finished=false,timer=setTimeout(function(){if(finished)return;finished=true;fail()},45000);
