@@ -3385,13 +3385,13 @@ function localTransport(room){let bc;try{bc=new BroadcastChannel('mn-dongsan-'+r
   bc.onmessage=e=>{const m=e.data;if(m.t==='__hb'){const n=!peers.has(m.d.p);peers.set(m.d.p,Object.assign({},m.d,{seen:Date.now()}));if(n)emitP();return;}if(m.t==='__bye'){peers.delete(m.d.p);emitP();return;}cbE(m.t,m.d);};
   const hb=setInterval(()=>{if(mine)bc.postMessage({t:'__hb',d:mine});const now=Date.now();let ch=false;for(const[k,v]of peers)if(now-v.seen>6000){peers.delete(k);ch=true;}if(ch)emitP();},1500);
   addEventListener('pagehide',()=>{if(mine)bc.postMessage({t:'__bye',d:mine});});
-  return{join(meta){mine=meta;bc.postMessage({t:'__hb',d:mine});emitP();return Promise.resolve();},send(t,d){try{bc.postMessage({t,d});}catch(e){}},onEvent(f){cbE=f;},onPeers(f){cbP=f;},leave(){if(mine)bc.postMessage({t:'__bye',d:mine});clearInterval(hb);bc.close();}};}
+  return{join(meta){mine=meta;bc.postMessage({t:'__hb',d:mine});emitP();return Promise.resolve();},send(t,d){if(peersN<=1)return;try{bc.postMessage({t,d});}catch(e){}},onEvent(f){cbE=f;},onPeers(f){cbP=f;},leave(){if(mine)bc.postMessage({t:'__bye',d:mine});clearInterval(hb);bc.close();}};}
 function supaTransport(sb,room){let ch=null,cbE=()=>{},cbP=()=>{};
   return{join(meta){return new Promise((res,rej)=>{ch=sb.channel('dongsan-'+room,{config:{broadcast:{self:false},presence:{key:meta.p}}});
       ch.on('broadcast',{event:'m'},({payload})=>cbE(payload.t,payload.d));
       ch.on('presence',{event:'sync'},()=>{const st=ch.presenceState();cbP(Object.values(st).map(a=>a[0]).filter(Boolean));});
       ch.subscribe(async st=>{if(st==='SUBSCRIBED'){try{await ch.track(meta);}catch(e){}res();}else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT')rej(new Error(st));});});},
-    send(t,d){if(ch)ch.send({type:'broadcast',event:'m',payload:{t,d}});},onEvent(f){cbE=f;},onPeers(f){cbP=f;},leave(){if(ch)sb.removeChannel(ch);}};}
+    send(t,d){if(ch&&peersN>1)ch.send({type:'broadcast',event:'m',payload:{t,d}});},onEvent(f){cbE=f;},onPeers(f){cbP=f;},leave(){if(ch)sb.removeChannel(ch);}};}
 
 /* ================== 돌보미 아바타 ================== */
 const LOOK={skin:['#f6d7bd','#ecc39f','#c99a74','#8d5f3f'],hair:['#2b211c','#5a3a26','#a8743f','#e0bf73','#9a9aa3','#e59a9a'],style:['짧은 머리','단발','긴 머리','양갈래'],
@@ -4207,7 +4207,7 @@ let vShown=0,vShownT=null;
 function vPeersShow(){const draw=()=>{$('#vPeers').textContent=`🐾 함께 있는 돌보미 ${vShown}명`;};
   if(peersN>=vShown){vShown=peersN;draw();return;}
   if(vShownT)return;const step=()=>{vShownT=null;if(peersN<vShown){vShown--;draw();if(peersN<vShown)vShownT=setTimeout(step,5000);}};vShownT=setTimeout(step,8000);}
-function onPeers(list){list=(Array.isArray(list)?netClean(list):[]).filter(q=>q&&netPid(q.p));list.forEach(q=>{q.n=netName(q.n);});peersN=Math.max(1,list.length);vPeersShow();
+function onPeers(list){list=(Array.isArray(list)?netClean(list):[]).filter(q=>q&&netPid(q.p));list.forEach(q=>{q.n=netName(q.n);});const wasAlone=peersN<=1;peersN=Math.max(1,list.length);if(wasAlone&&peersN>1){stT=0;snapT=0;itT=0;}vPeersShow();
   const sorted=list.slice().sort((x,y)=>(x.j-y.j)||(x.p<y.p?-1:1));setHost(!sorted.length||sorted[0].p===me.p);
   const ids=new Set(list.map(q=>q.p));PEERS.forEach((P,pid)=>{if(!ids.has(pid)){dropPeer(pid);}});}
 const isBlocked=pid=>(save.blocked||[]).some(b=>b.p===pid);
